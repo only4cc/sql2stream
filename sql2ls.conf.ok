@@ -1,0 +1,16 @@
+version = 0.1
+persist_filename = last
+log_filename = test.log
+delay = 3
+
+[origen]
+sql_query=SELECT create_time, ticket_id, owner_id, name, state_id FROM otrs.ticket_history WHERE create_time >= (NOW()-INTERVAL 30000 SECOND) 
+#timestamp_col_name = UNIX_TIMESTAMP(create_time)
+timestamp_col_name = create_time
+colname_list=create_time,tickect_id,owner_id,name
+
+[es_server]
+es_nodes=10.33.32.116
+es_port=9200
+es_indexname=otrs2es_test
+

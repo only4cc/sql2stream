@@ -8,15 +8,17 @@ my $dbh = DBI->connect("dbi:SQLite:dbname=$dbfile","","", { RaiseError => 1, Aut
 
 my $sth = $dbh->prepare('INSERT INTO t1 VALUES ( ?, ?, ?, ?)');
 
-my $DELAY=10;
+my $DELAY=shift ||5;
 my $i = 0;
 my $ts;
+my $col2;
 while ( 1 ) {
     $ts = localtime();    
     my $ult_ts = DateTime->now->epoch;
-    $sth->execute( $ult_ts, undef, 'valor nuevo '.$i, $ts);
+    $col2 = 'valor nuevo '.rand(10000);
+    $sth->execute( $ult_ts, undef, $col2, $ts);
     sleep rand(int($DELAY));
-    print "$i : $ult_ts : valor nuevo $i \t $ts\n";
+    print "$i : $ult_ts : valor nuevo $col2 \t $ts\n";
     ++$i;
 }
 

@@ -19,7 +19,6 @@ use Search::Elasticsearch;
 use Data::Dumper;
 use lib '/home/jtrumper/perl5/lib/perl5';
 use Mojo::JSON qw(encode_json);
-use POSIX qw(strftime);
 
 my $DEBUG=1;    # 1 : Si | 0 : No
 
@@ -50,11 +49,11 @@ $SQLQUERY .= " AND $TS_COLNAME >= ?";
 # Logging inicial
 print "Iniciando $0 - ver. $version | Modo: $MODE ...\n";
 print "delay              : $DELAY [s]\n";
-print "sql_query          : $Config->{origen}->{sql_query}\n";
-print "SQL a ejecutar     : $SQLQUERY\n";
+print "sql_query          : $SQLQUERY\n";
 print "timestamp_col_name : ${TS_COLNAME}\n";
 print "persist_filename   : $persistfile\n";
 print "log_filename       : $logfile\n";
+print "SQL                : $SQLQUERY\n";
 
 
 # Logging (pendiente ... ) <<<<<<<<<<<
@@ -65,11 +64,9 @@ if ( $SERVER  ) {
 # Coneccion a la fuente de datos
 my $database='otrs';
 my $hostname='10.34.16.111';  # OTRS
-my $user    ='jtrumper';
-my $password = `cat .p`;
-chomp($password);
+my $password='password';
+my $user    = 'jtrumper';
 
-print "conectado a bases de datos ...\n";
 my $dsn = "DBI:mysql:database=$database;host=$hostname"; #;port=$port";
 my $dbh = DBI->connect($dsn, $user, $password, { RaiseError => 1, AutoCommit => 1 })
                 or die $DBI::errstr;
@@ -83,7 +80,6 @@ my $dbh = DBI->connect($dsn, $user, $password, { RaiseError => 1, AutoCommit => 
 #                or die $DBI::errstr;
 
 # Conexion a ES
-print "conectado a ES ...\n";
 my $e = Search::Elasticsearch->new(
     nodes => [
                 "$HOSTS:$PORT"
@@ -96,6 +92,7 @@ my $lastime;
 try {
   my $hashref = retrieve($persistfile);   
   $lastime = $$hashref;                  
+  $lastime = 0;
 } catch {
   $lastime = 0;
   #die "error: $_"; # not $@
@@ -106,7 +103,6 @@ print "lastime inicial    : ".$lastime."\n";
 my $json;
 my $response;
 # Main
-print "revisando nuevas filas ...\n";
 while ( 1 ) {
     my $sth = $dbh->prepare( $SQLQUERY );
     $sth->bind_param( 1, $lastime );
@@ -116,9 +112,9 @@ while ( 1 ) {
         #$lastime =  @$row[0];
         print "last [ $lastime ] : fila: ". join(',',@$row). "\n"; # @$row[0] @$row[1] @$row[2] @$row[3]\n";
         $json = array2json( $row );
-        print "-----------------------------------------------------\n" if $DEBUG;
-        print "$json\n"                                                 if $DEBUG;
-        print "-----------------------------------------------------\n" if $DEBUG;
+        print "-----------------------------------------------------\n"; if $DEBUG;
+        print "$json\n\n";   if $DEBUG;
+        print "-----------------------------------------------------\n"; if $DEBUG;
 #=begin
         $response = $e->index(
                     index   => $INDEXNAME,
@@ -143,7 +139,7 @@ while ( 1 ) {
         }
     }
     $sth->finish();
-    print localtime().": esperando nuevas filas, posteriores a [ $lastime | ".strftime("%m/%d/%Y %H:%M:%S",localtime($lastime))." ] ...\n";
+    print localtime().": esperando nuevas filas, posteriores a [ $lastime ] ...\n";
     sleep $DELAY;
     exit if ( ! $SERVER ); 
 }
@@ -154,9 +150,9 @@ $dbh->disconnect();
 sub array2json {
     my $rcolvals = shift;
     my @colvals  = @$rcolvals;
-    my $toj = ' ';
+    my $toj;
     for ( my $i=0; $i<scalar(@colvals); ++$i) {
-        $toj .= "$colnames[$i] => '$colvals[$i]'\," if  ( $colvals[$i] && $colnames[$i] );
+        $toj .= "$colnames[$i] => '$colvals[$i]'\,";
     }
     $toj =~ s/\,$//;
     my $tojson = encode_json { eval $toj };
